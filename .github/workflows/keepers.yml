@@ -1,0 +1,53 @@
+# WinUSDT duty keepers on GitHub Actions (public repo = free minutes).
+#
+# Why a long-running job instead of a plain cron pass: BSC block time is
+# ~0.45s after Maxwell, so the lottery COMMIT_WINDOW (250 blocks) is ~1.9 min
+# and the slots blockhash decay (256 blocks) is ~1.9 min. A 5-min cron pass
+# would miss those windows. Instead each job hosts the REAL daemon scripts
+# (15-30s internal polling) for ~62 minutes; the hourly schedule chains jobs
+# back-to-back through the concurrency queue (a queued run starts when the
+# previous job ends), and the :30 backstop covers crashes.
+#
+# Requires repo secret: DEPLOYER_PRIVATE_KEY (treasury/keeper wallet).
+# Without the secret the job exits green with a "skip" note.
+#
+# Note: GitHub disables scheduled workflows after 60 days without repo
+# commits - keep pushing to this repo (docs syncs count).
+name: keepers
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # primary hourly chain
+    - cron: "30 * * * *"  # backstop: runs only if no job is alive/queued
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepers
+  cancel-in-progress: false
+
+jobs:
+  keepers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 62
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run keepers (slots + lottery daemons)
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+        run: |
+          if [ -z "$DEPLOYER_PRIVATE_KEY" ]; then
+            echo "skip: DEPLOYER_PRIVATE_KEY secret is not set. Add it in repo Settings -> Secrets and variables -> Actions to activate the hosted keepers."
+            exit 0
+          fi
+          node scripts/slotsKeeper.cjs &
+          node scripts/lotteryKeeper.cjs &
+          wait
+
