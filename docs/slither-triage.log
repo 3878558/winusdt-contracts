@@ -1,0 +1,1239 @@
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python312\Lib\logging\__init__.py", line 1163, in emit
+    stream.write(msg + self.terminator)
+  File "C:\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u25c7' in position 59: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Python312\Scripts\slither.exe\__main__.py", line 7, in <module>
+    sys.exit(main())
+  File "C:\Python312\Lib\site-packages\slither\__main__.py", line 815, in main
+    main_impl(all_detector_classes=detectors, all_printer_classes=printers)
+  File "C:\Python312\Lib\site-packages\slither\__main__.py", line 936, in main_impl
+    ) = process_all(filename, args, detector_classes, printer_classes)
+  File "C:\Python312\Lib\site-packages\slither\__main__.py", line 100, in process_all
+    compilations = compile_all(target, **vars(args))
+  File "C:\Python312\Lib\site-packages\crytic_compile\crytic_compile.py", line 870, in compile_all
+    compilations.append(CryticCompile(target, **kwargs))
+  File "C:\Python312\Lib\site-packages\crytic_compile\crytic_compile.py", line 279, in __init__
+    self._compile(**kwargs)
+  File "C:\Python312\Lib\site-packages\crytic_compile\crytic_compile.py", line 725, in _compile
+    self._platform.compile(self, **kwargs)
+  File "C:\Python312\Lib\site-packages\crytic_compile\platform\hardhat.py", line 213, in compile
+    detected_paths = self._get_hardhat_paths(base_cmd, kwargs)
+  File "C:\Python312\Lib\site-packages\crytic_compile\platform\hardhat.py", line 336, in _get_hardhat_paths
+    config_str = self._run_hardhat_console(base_cmd, print_paths)
+  File "C:\Python312\Lib\site-packages\crytic_compile\platform\hardhat.py", line 377, in _run_hardhat_console
+    LOGGER.info("Unexpected output from Hardhat, trying to parse it anyway: %s", stdout)
+Message: 'Unexpected output from Hardhat, trying to parse it anyway: %s'
+Arguments: ('\u25c7 injected env (5) from .env // tip: \u2301 auth for agents [www.vestauth.com]\n\u25c7 injected env (0) from .env // tip: \u25c8 encrypted .env [www.dotenvx.com]\n{"sources":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend\\\\contracts","artifacts":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend\\\\artifacts","cache":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend\\\\cache","root":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend","configFile":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend\\\\hardhat.config.cjs","tests":"C:\\\\Users\\\\Administrator\\\\.cline\\\\data\\\\workspaces\\\\chat\\\\winusdt\\\\lottery-frontend\\\\test"}\n',)
+INFO:Detectors:
+Detector: arbitrary-send-erc20
+SafeERC20.safeTransferFrom(IERC20,address,address,uint256) (contracts/FlexibleLottery.sol#12-15) uses arbitrary from in transferFrom: success = token.transferFrom(from,to,amount) (contracts/FlexibleLottery.sol#13)
+SafeERC20.safeTransferFrom(IERC20,address,address,uint256) (contracts/FlexibleLotteryV2.sol#12-15) uses arbitrary from in transferFrom: success = token.transferFrom(from,to,amount) (contracts/FlexibleLotteryV2.sol#13)
+SafeERC20.safeTransferFrom(IERC20,address,address,uint256) (contracts/Slots.sol#11-14) uses arbitrary from in transferFrom: success = token.transferFrom(from,to,amount) (contracts/Slots.sol#12)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#arbitrary-from-in-transferfrom
+INFO:Detectors:
+Detector: weak-prng
+FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355) uses a weak PRNG: "winIndex = seed % totalTickets (contracts/FlexibleLottery.sol#326)" 
+FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269) uses a weak PRNG: "winIndex = seed % totalTickets (contracts/FlexibleLotteryV2.sol#242)" 
+Slots.evaluate(uint256,uint256) (contracts/Slots.sol#216-238) uses a weak PRNG: "r2 = (seed / W) % W (contracts/Slots.sol#220)" 
+Slots.evaluate(uint256,uint256) (contracts/Slots.sol#216-238) uses a weak PRNG: "r3 = (seed / (W * W)) % W (contracts/Slots.sol#221)" 
+Slots.evaluate(uint256,uint256) (contracts/Slots.sol#216-238) uses a weak PRNG: "r1 = seed % W (contracts/Slots.sol#219)" 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#weak-PRNG
+INFO:Detectors:
+Detector: reentrancy-balance
+Reentrancy in Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313):
+	External call allowing reentrancy:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),escrow) (contracts/Slots.sol#300)
+	Balance read before the call:
+	- before = usdt.balanceOf(address(this)) (contracts/Slots.sol#299)
+	Possible stale balance used after the call in a condition:
+	- require(bool,string)(usdt.balanceOf(address(this)) - before == escrow,fee-on-transfer unsupported) (contracts/Slots.sol#301)
+		- stale variable `before`
+Reentrancy in Slots.deposit(uint256) (contracts/Slots.sol#248-266):
+	External call allowing reentrancy:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),amount) (contracts/Slots.sol#252)
+	Balance read before the call:
+	- eqBefore = equity() (contracts/Slots.sol#251)
+	Possible stale balance used after the call in a condition:
+	- require(bool,string)(eqBefore > 0,pool depleted) (contracts/Slots.sol#259)
+		- stale variable `eqBefore`
+	- require(bool,string)(shares > 0,dust) (contracts/Slots.sol#262)
+		- stale variable `shares`
+Reentrancy in Slots.deposit(uint256) (contracts/Slots.sol#248-266):
+	External call allowing reentrancy:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),amount) (contracts/Slots.sol#252)
+	Balance read before the call:
+	- before = usdt.balanceOf(address(this)) (contracts/Slots.sol#250)
+	Possible stale balance used after the call in a condition:
+	- require(bool,string)(shares > 0,dust) (contracts/Slots.sol#262)
+		- stale variable `shares`
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities
+INFO:Detectors:
+Detector: incorrect-equality
+FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527) uses a dangerous strict equality:
+	- require(bool,string)(usdt.balanceOf(address(this)) == 0,Withdraw fees first) (contracts/FlexibleLottery.sol#517)
+FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197) uses a dangerous strict equality:
+	- require(bool,string)(roundDeadline == 0 || block.timestamp <= roundDeadline,Round window expired) (contracts/FlexibleLotteryV2.sol#164)
+FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434) uses a dangerous strict equality:
+	- require(bool,string)(usdt.balanceOf(address(this)) == 0,Withdraw fees first) (contracts/FlexibleLotteryV2.sol#419)
+Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313) uses a dangerous strict equality:
+	- require(bool,string)(usdt.balanceOf(address(this)) - before == escrow,fee-on-transfer unsupported) (contracts/Slots.sol#301)
+Slots.deposit(uint256) (contracts/Slots.sol#248-266) uses a dangerous strict equality:
+	- totalShares == 0 (contracts/Slots.sol#256)
+Slots.lpValue(address) (contracts/Slots.sol#191-194) uses a dangerous strict equality:
+	- totalShares == 0 (contracts/Slots.sol#192)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+INFO:Detectors:
+Detector: locked-ether
+Contract locking ether found:
+	Contract FlexibleLottery (contracts/FlexibleLottery.sol#30-557) has payable functions:
+	 - FlexibleLottery.receive() (contracts/FlexibleLottery.sol#555)
+	 - FlexibleLottery.fallback() (contracts/FlexibleLottery.sol#556)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract FlexibleLotteryV2 (contracts/FlexibleLotteryV2.sol#49-493) has payable functions:
+	 - FlexibleLotteryV2.receive() (contracts/FlexibleLotteryV2.sol#491)
+	 - FlexibleLotteryV2.fallback() (contracts/FlexibleLotteryV2.sol#492)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract Slots (contracts/Slots.sol#54-491) has payable functions:
+	 - Slots.receive() (contracts/Slots.sol#489)
+	 - Slots.fallback() (contracts/Slots.sol#490)
+	But does not have a function to withdraw the ether
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether
+INFO:Detectors:
+Detector: reentrancy-no-eth
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	State variables written after the call(s):
+	- state = Lotterystate.OPEN (contracts/FlexibleLottery.sol#421)
+	FlexibleLottery.state (contracts/FlexibleLottery.sol#34) can be used in cross function reentrancies:
+	- FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426)
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.state (contracts/FlexibleLottery.sol#34)
+	- FlexibleLottery.triggerDraw() (contracts/FlexibleLottery.sol#169-172)
+	- FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527)
+	- FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446)
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+		- state = Lotterystate.FULL (contracts/FlexibleLottery.sol#287)
+	FlexibleLottery.state (contracts/FlexibleLottery.sol#34) can be used in cross function reentrancies:
+	- FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426)
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.state (contracts/FlexibleLottery.sol#34)
+	- FlexibleLottery.triggerDraw() (contracts/FlexibleLottery.sol#169-172)
+	- FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527)
+	- FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446)
+Reentrancy in FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- state = Lotterystate.OPEN (contracts/FlexibleLotteryV2.sol#364)
+	FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337)
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._openNewRound() (contracts/FlexibleLotteryV2.sol#356-366)
+	- FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canCommit() (contracts/FlexibleLotteryV2.sol#442-446)
+	- FlexibleLotteryV2.canDraw() (contracts/FlexibleLotteryV2.sol#447-449)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.commitHash() (contracts/FlexibleLotteryV2.sol#205-215)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55)
+	- FlexibleLotteryV2.triggerDraw() (contracts/FlexibleLotteryV2.sol#218-222)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352)
+Reentrancy in FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLottery.sol#370)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+		- state = Lotterystate.OPEN (contracts/FlexibleLottery.sol#421)
+		- state = Lotterystate.FULL (contracts/FlexibleLottery.sol#287)
+	FlexibleLottery.state (contracts/FlexibleLottery.sol#34) can be used in cross function reentrancies:
+	- FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426)
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.state (contracts/FlexibleLottery.sol#34)
+	- FlexibleLottery.triggerDraw() (contracts/FlexibleLottery.sol#169-172)
+	- FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527)
+	- FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446)
+Reentrancy in FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLotteryV2.sol#284)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- state = Lotterystate.OPEN (contracts/FlexibleLotteryV2.sol#364)
+	FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337)
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._openNewRound() (contracts/FlexibleLotteryV2.sol#356-366)
+	- FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canCommit() (contracts/FlexibleLotteryV2.sol#442-446)
+	- FlexibleLotteryV2.canDraw() (contracts/FlexibleLotteryV2.sol#447-449)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.commitHash() (contracts/FlexibleLotteryV2.sol#205-215)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55)
+	- FlexibleLotteryV2.triggerDraw() (contracts/FlexibleLotteryV2.sol#218-222)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352)
+Reentrancy in FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290):
+	External calls:
+	- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+	- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- tickets.push(address(entry.player)) (contracts/FlexibleLottery.sol#250)
+	FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40) can be used in cross function reentrancies:
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getTotalTickets() (contracts/FlexibleLottery.sol#535)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40)
+	- ticketsPerPlayer[entry.player] += qty (contracts/FlexibleLottery.sol#252)
+	FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyTickets(address) (contracts/FlexibleLottery.sol#536)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41)
+	- uniquePlayersCount ++ (contracts/FlexibleLottery.sol#253)
+	FlexibleLottery.uniquePlayersCount (contracts/FlexibleLottery.sol#51) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.uniquePlayersCount (contracts/FlexibleLottery.sol#51)
+	- waitlist[k] = waitlist[k + processed] (contracts/FlexibleLottery.sol#275)
+	FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getWaitlistEntry(uint256) (contracts/FlexibleLottery.sol#219-223)
+	- FlexibleLottery.getWaitlistLength() (contracts/FlexibleLottery.sol#215-217)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84)
+	- waitlist.pop() (contracts/FlexibleLottery.sol#279)
+	FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getWaitlistEntry(uint256) (contracts/FlexibleLottery.sol#219-223)
+	- FlexibleLottery.getWaitlistLength() (contracts/FlexibleLottery.sol#215-217)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84)
+	- delete waitlistIndex[entry.player] (contracts/FlexibleLottery.sol#256)
+	FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyWaitlistPosition() (contracts/FlexibleLottery.sol#225-228)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86)
+	- delete waitlistIndex[entry.player] (contracts/FlexibleLottery.sol#267)
+	FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyWaitlistPosition() (contracts/FlexibleLottery.sol#225-228)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86)
+	- waitlistIndex[waitlist[k].player] = k (contracts/FlexibleLottery.sol#276)
+	FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyWaitlistPosition() (contracts/FlexibleLottery.sol#225-228)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86)
+Reentrancy in Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313):
+	External calls:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),escrow) (contracts/Slots.sol#300)
+	State variables written after the call(s):
+	- activePlayer = msg.sender (contracts/Slots.sol#311)
+	Slots.activePlayer (contracts/Slots.sol#94) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.activePlayer (contracts/Slots.sol#94)
+	- sessions[msg.sender] = Session({bet:uint128(bet),betBlock:uint32(block.number),n:uint16(n),active:true}) (contracts/Slots.sol#305-310)
+	Slots.sessions (contracts/Slots.sol#121) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.activeSession(address) (contracts/Slots.sol#196-201)
+	- Slots.sessions (contracts/Slots.sol#121)
+	- Slots.spin(uint256,bool) (contracts/Slots.sol#322-325)
+	- totalEscrow += escrow (contracts/Slots.sol#303)
+	Slots.totalEscrow (contracts/Slots.sol#124) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.equity() (contracts/Slots.sol#187-189)
+	- Slots.freeBankroll() (contracts/Slots.sol#171-173)
+	- Slots.totalEscrow (contracts/Slots.sol#124)
+	- Slots.withdraw(uint256) (contracts/Slots.sol#270-284)
+	- totalExposure += EXPOSURE_FACTOR * escrow (contracts/Slots.sol#304)
+	Slots.totalExposure (contracts/Slots.sol#125) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.freeBankroll() (contracts/Slots.sol#171-173)
+	- Slots.totalExposure (contracts/Slots.sol#125)
+	- Slots.withdraw(uint256) (contracts/Slots.sol#270-284)
+Reentrancy in FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),totalCost) (contracts/FlexibleLottery.sol#145)
+	State variables written after the call(s):
+	- state = Lotterystate.FULL (contracts/FlexibleLottery.sol#161)
+	FlexibleLottery.state (contracts/FlexibleLottery.sol#34) can be used in cross function reentrancies:
+	- FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426)
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.state (contracts/FlexibleLottery.sol#34)
+	- FlexibleLottery.triggerDraw() (contracts/FlexibleLottery.sol#169-172)
+	- FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527)
+	- FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446)
+	- tickets.push(address(msg.sender)) (contracts/FlexibleLottery.sol#148)
+	FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40) can be used in cross function reentrancies:
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getTotalTickets() (contracts/FlexibleLottery.sol#535)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40)
+	- ticketsPerPlayer[msg.sender] += quantity (contracts/FlexibleLottery.sol#150)
+	FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyTickets(address) (contracts/FlexibleLottery.sol#536)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41)
+Reentrancy in FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),totalCost) (contracts/FlexibleLotteryV2.sol#178)
+	State variables written after the call(s):
+	- state = Lotterystate.FULL (contracts/FlexibleLotteryV2.sol#191)
+	FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337)
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._openNewRound() (contracts/FlexibleLotteryV2.sol#356-366)
+	- FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canCommit() (contracts/FlexibleLotteryV2.sol#442-446)
+	- FlexibleLotteryV2.canDraw() (contracts/FlexibleLotteryV2.sol#447-449)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.commitHash() (contracts/FlexibleLotteryV2.sol#205-215)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55)
+	- FlexibleLotteryV2.triggerDraw() (contracts/FlexibleLotteryV2.sol#218-222)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352)
+	- tickets.push(address(msg.sender)) (contracts/FlexibleLotteryV2.sol#181)
+	FlexibleLotteryV2.tickets (contracts/FlexibleLotteryV2.sol#61) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.getTotalTickets() (contracts/FlexibleLotteryV2.sol#437)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.tickets (contracts/FlexibleLotteryV2.sol#61)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- ticketsPerPlayer[msg.sender] += quantity (contracts/FlexibleLotteryV2.sol#183)
+	FlexibleLotteryV2.ticketsPerPlayer (contracts/FlexibleLotteryV2.sol#62) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.getMyTickets(address) (contracts/FlexibleLotteryV2.sol#438)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.ticketsPerPlayer (contracts/FlexibleLotteryV2.sol#62)
+Reentrancy in Slots.claimCreatorFees(address[]) (contracts/Slots.sol#438-447):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,who[i],amt) (contracts/Slots.sol#444)
+	State variables written after the call(s):
+	- creatorFees[who[i]] = 0 (contracts/Slots.sol#442)
+	Slots.creatorFees (contracts/Slots.sol#128) can be used in cross function reentrancies:
+	- Slots._accrueFee(uint256,uint256) (contracts/Slots.sol#429-434)
+	- Slots.claimCreatorFees(address[]) (contracts/Slots.sol#438-447)
+	- Slots.creatorFees (contracts/Slots.sol#128)
+	- creatorFeesTotal -= amt (contracts/Slots.sol#443)
+	Slots.creatorFeesTotal (contracts/Slots.sol#129) can be used in cross function reentrancies:
+	- Slots._accrueFee(uint256,uint256) (contracts/Slots.sol#429-434)
+	- Slots.claimCreatorFees(address[]) (contracts/Slots.sol#438-447)
+	- Slots.creatorFeesTotal (contracts/Slots.sol#129)
+	- Slots.equity() (contracts/Slots.sol#187-189)
+	- Slots.freeBankroll() (contracts/Slots.sol#171-173)
+	- Slots.withdraw(uint256) (contracts/Slots.sol#270-284)
+Reentrancy in FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLottery.sol#483)
+	State variables written after the call(s):
+	- ticketsPerPlayer[player] = 0 (contracts/FlexibleLottery.sol#482)
+	FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyTickets(address) (contracts/FlexibleLottery.sol#536)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.ticketsPerPlayer (contracts/FlexibleLottery.sol#41)
+Reentrancy in FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLottery.sol#483)
+	- usdt.safeTransfer(waitlist[i_scope_0].player,waitlist[i_scope_0].deposit) (contracts/FlexibleLottery.sol#488)
+	State variables written after the call(s):
+	- state = Lotterystate.OPEN (contracts/FlexibleLottery.sol#504)
+	FlexibleLottery.state (contracts/FlexibleLottery.sol#34) can be used in cross function reentrancies:
+	- FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426)
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.state (contracts/FlexibleLottery.sol#34)
+	- FlexibleLottery.triggerDraw() (contracts/FlexibleLottery.sol#169-172)
+	- FlexibleLottery.updateParams(uint256,uint256,uint256,uint256) (contracts/FlexibleLottery.sol#508-527)
+	- FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446)
+	- delete tickets (contracts/FlexibleLottery.sol#500)
+	FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40) can be used in cross function reentrancies:
+	- FlexibleLottery._executeDraw(string) (contracts/FlexibleLottery.sol#311-315)
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getTotalTickets() (contracts/FlexibleLottery.sol#535)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.tickets (contracts/FlexibleLottery.sol#40)
+	- uniquePlayersCount = 0 (contracts/FlexibleLottery.sol#499)
+	FlexibleLottery.uniquePlayersCount (contracts/FlexibleLottery.sol#51) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery._selectWinner() (contracts/FlexibleLottery.sol#317-355)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.canDraw() (contracts/FlexibleLottery.sol#292-296)
+	- FlexibleLottery.creatorStartDraw() (contracts/FlexibleLottery.sol#303-309)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468)
+	- FlexibleLottery.uniquePlayersCount (contracts/FlexibleLottery.sol#51)
+	- delete waitlist (contracts/FlexibleLottery.sol#492)
+	FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getWaitlistEntry(uint256) (contracts/FlexibleLottery.sol#219-223)
+	- FlexibleLottery.getWaitlistLength() (contracts/FlexibleLottery.sol#215-217)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlist (contracts/FlexibleLottery.sol#84)
+	- delete waitlistIndex[waitlist[i_scope_0].player] (contracts/FlexibleLottery.sol#490)
+	FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyWaitlistPosition() (contracts/FlexibleLottery.sol#225-228)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+	- FlexibleLottery.waitlistIndex (contracts/FlexibleLottery.sol#86)
+Reentrancy in FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),deposit) (contracts/FlexibleLottery.sol#183)
+	State variables written after the call(s):
+	- inWaitlist[msg.sender] = true (contracts/FlexibleLottery.sol#191)
+	FlexibleLottery.inWaitlist (contracts/FlexibleLottery.sol#85) can be used in cross function reentrancies:
+	- FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290)
+	- FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164)
+	- FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506)
+	- FlexibleLottery.getMyWaitlistPosition() (contracts/FlexibleLottery.sol#225-228)
+	- FlexibleLottery.inWaitlist (contracts/FlexibleLottery.sol#85)
+	- FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194)
+	- FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213)
+Reentrancy in FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLotteryV2.sol#391)
+	State variables written after the call(s):
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+	FlexibleLotteryV2.roundDeadline (contracts/FlexibleLotteryV2.sol#85) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._openNewRound() (contracts/FlexibleLotteryV2.sol#356-366)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.roundDeadline (contracts/FlexibleLotteryV2.sol#85)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- state = Lotterystate.OPEN (contracts/FlexibleLotteryV2.sol#364)
+	FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337)
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._openNewRound() (contracts/FlexibleLotteryV2.sol#356-366)
+	- FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canCommit() (contracts/FlexibleLotteryV2.sol#442-446)
+	- FlexibleLotteryV2.canDraw() (contracts/FlexibleLotteryV2.sol#447-449)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.commitHash() (contracts/FlexibleLotteryV2.sol#205-215)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.state (contracts/FlexibleLotteryV2.sol#55)
+	- FlexibleLotteryV2.triggerDraw() (contracts/FlexibleLotteryV2.sol#218-222)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352)
+	- delete tickets (contracts/FlexibleLotteryV2.sol#401)
+	FlexibleLotteryV2.tickets (contracts/FlexibleLotteryV2.sol#61) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._executeDraw() (contracts/FlexibleLotteryV2.sol#224-228)
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458)
+	- FlexibleLotteryV2.getRoundStatus() (contracts/FlexibleLotteryV2.sol#460-470)
+	- FlexibleLotteryV2.getTotalTickets() (contracts/FlexibleLotteryV2.sol#437)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.tickets (contracts/FlexibleLotteryV2.sol#61)
+	- FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/FlexibleLotteryV2.sol#407-434)
+	- ticketsPerPlayer[player] = 0 (contracts/FlexibleLotteryV2.sol#390)
+	FlexibleLotteryV2.ticketsPerPlayer (contracts/FlexibleLotteryV2.sol#62) can be used in cross function reentrancies:
+	- FlexibleLotteryV2._selectWinner() (contracts/FlexibleLotteryV2.sol#230-269)
+	- FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197)
+	- FlexibleLotteryV2.getMyTickets(address) (contracts/FlexibleLotteryV2.sol#438)
+	- FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404)
+	- FlexibleLotteryV2.ticketsPerPlayer (contracts/FlexibleLotteryV2.sol#62)
+Reentrancy in Slots.spin(uint256,bool) (contracts/Slots.sol#322-325):
+	External calls:
+	- _settleSingle(msg.sender) (contracts/Slots.sol#323)
+		- success = token.transfer(to,amount) (contracts/Slots.sol#16)
+		- SafeERC20.safeTransfer(usdt,player,bet) (contracts/Slots.sol#366)
+		- SafeERC20.safeTransfer(usdt,player,payout) (contracts/Slots.sol#373)
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- success = token.transferFrom(from,to,amount) (contracts/Slots.sol#12)
+		- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),escrow) (contracts/Slots.sol#300)
+	State variables written after the call(s):
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- activePlayer = msg.sender (contracts/Slots.sol#311)
+	Slots.activePlayer (contracts/Slots.sol#94) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.activePlayer (contracts/Slots.sol#94)
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- sessions[msg.sender] = Session({bet:uint128(bet),betBlock:uint32(block.number),n:uint16(n),active:true}) (contracts/Slots.sol#305-310)
+	Slots.sessions (contracts/Slots.sol#121) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.activeSession(address) (contracts/Slots.sol#196-201)
+	- Slots.sessions (contracts/Slots.sol#121)
+	- Slots.spin(uint256,bool) (contracts/Slots.sol#322-325)
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- totalEscrow += escrow (contracts/Slots.sol#303)
+	Slots.totalEscrow (contracts/Slots.sol#124) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.equity() (contracts/Slots.sol#187-189)
+	- Slots.freeBankroll() (contracts/Slots.sol#171-173)
+	- Slots.totalEscrow (contracts/Slots.sol#124)
+	- Slots.withdraw(uint256) (contracts/Slots.sol#270-284)
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- totalExposure += EXPOSURE_FACTOR * escrow (contracts/Slots.sol#304)
+	Slots.totalExposure (contracts/Slots.sol#125) can be used in cross function reentrancies:
+	- Slots._settleSeries(address) (contracts/Slots.sol#389-424)
+	- Slots._settleSingle(address) (contracts/Slots.sol#345-376)
+	- Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313)
+	- Slots.freeBankroll() (contracts/Slots.sol#171-173)
+	- Slots.totalExposure (contracts/Slots.sol#125)
+	- Slots.withdraw(uint256) (contracts/Slots.sol#270-284)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Detector: uninitialized-local
+Slots._settleSeries(address).totalPayout (contracts/Slots.sol#405) is a local variable never initialized
+Slots._settleSeries(address).totalRefunded (contracts/Slots.sol#406) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+INFO:Detectors:
+Detector: unused-return
+SniperBotV1.arm() (contracts/SniperBots.sol#42-44) ignores return value by usdt.approve(address(lottery),type()(uint256).max) (contracts/SniperBots.sol#43)
+SniperBotV2.arm() (contracts/SniperBots.sol#65-67) ignores return value by usdt.approve(address(lottery),type()(uint256).max) (contracts/SniperBots.sol#66)
+PayoutSpy.onReceive(address,address,uint256) (contracts/test/SlotsMocks.sol#89-97) ignores return value by (None,None,None,active) = slots.activeSession(address(this)) (contracts/test/SlotsMocks.sol#92)
+PayoutSpy.spinOnly(address,address,uint256) (contracts/test/SlotsMocks.sol#100-103) ignores return value by IERC20(t).approve(s,type()(uint256).max) (contracts/test/SlotsMocks.sol#101)
+AtomicAttack.probe(address,address,uint256) (contracts/test/SlotsMocks.sol#122-126) ignores return value by IERC20(t).approve(s,type()(uint256).max) (contracts/test/SlotsMocks.sol#123)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+INFO:Detectors:
+Detector: missing-zero-check
+ReentrantUSDT.setHook(address).h (contracts/test/SlotsMocks.sol#51) lacks a zero-check on :
+		- hook = h (contracts/test/SlotsMocks.sol#51)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+INFO:Detectors:
+Detector: reentrancy-benign
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	State variables written after the call(s):
+	- nextDrawTimestamp = block.timestamp (contracts/FlexibleLottery.sol#420)
+	- roundId ++ (contracts/FlexibleLottery.sol#418)
+	- totalRoundsCompleted ++ (contracts/FlexibleLottery.sol#419)
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+Reentrancy in FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- roundId ++ (contracts/FlexibleLotteryV2.sol#357)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+		- totalRoundsCompleted ++ (contracts/FlexibleLotteryV2.sol#358)
+Reentrancy in FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLottery.sol#370)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+Reentrancy in FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLotteryV2.sol#284)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+Reentrancy in FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290):
+	External calls:
+	- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+	- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+	- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+	- state = Lotterystate.FULL (contracts/FlexibleLottery.sol#287)
+Reentrancy in Slots._settleSingle(address) (contracts/Slots.sol#345-376):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,player,payout) (contracts/Slots.sol#373)
+	State variables written after the call(s):
+	- _accrueFee(bet,payout) (contracts/Slots.sol#374)
+		- creatorFees[creator] += fee (contracts/Slots.sol#432)
+	- _accrueFee(bet,payout) (contracts/Slots.sol#374)
+		- creatorFeesTotal += fee (contracts/Slots.sol#433)
+Reentrancy in FlexibleLottery.batchForceClaim(address[]) (contracts/FlexibleLottery.sol#388-409):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLottery.sol#404)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+Reentrancy in FlexibleLotteryV2.batchForceClaim(address[]) (contracts/FlexibleLotteryV2.sol#304-325):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLotteryV2.sol#320)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+Reentrancy in FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),totalCost) (contracts/FlexibleLotteryV2.sol#178)
+	State variables written after the call(s):
+	- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#194)
+	- fillBlock = block.number (contracts/FlexibleLotteryV2.sol#192)
+	- hashCommitted = false (contracts/FlexibleLotteryV2.sol#193)
+Reentrancy in Slots.deposit(uint256) (contracts/Slots.sol#248-266):
+	External calls:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),amount) (contracts/Slots.sol#252)
+	State variables written after the call(s):
+	- lpShares[msg.sender] += shares (contracts/Slots.sol#264)
+	- totalShares += shares (contracts/Slots.sol#263)
+Reentrancy in FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLottery.sol#483)
+	- usdt.safeTransfer(waitlist[i_scope_0].player,waitlist[i_scope_0].deposit) (contracts/FlexibleLottery.sol#488)
+	State variables written after the call(s):
+	- inWaitlist[waitlist[i_scope_0].player] = false (contracts/FlexibleLottery.sol#489)
+	- nextDrawTimestamp = block.timestamp (contracts/FlexibleLottery.sol#503)
+	- roundId ++ (contracts/FlexibleLottery.sol#502)
+	- roundResults[roundId].refunded = true (contracts/FlexibleLottery.sol#496)
+	- roundResults[roundId].hasResult = true (contracts/FlexibleLottery.sol#497)
+	- totalRoundsCompleted ++ (contracts/FlexibleLottery.sol#501)
+Reentrancy in FlexibleLottery.forceClaimPrize(address) (contracts/FlexibleLottery.sol#377-386):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLottery.sol#383)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+Reentrancy in FlexibleLotteryV2.forceClaimPrize(address) (contracts/FlexibleLotteryV2.sol#293-302):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLotteryV2.sol#299)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	State variables written after the call(s):
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+Reentrancy in FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),deposit) (contracts/FlexibleLottery.sol#183)
+	State variables written after the call(s):
+	- waitlist.push(WaitlistEntry({player:msg.sender,quantity:quantity,deposit:deposit})) (contracts/FlexibleLottery.sol#186-190)
+	- waitlistIndex[msg.sender] = waitlist.length (contracts/FlexibleLottery.sol#185)
+Reentrancy in PayoutSpy.onReceive(address,address,uint256) (contracts/test/SlotsMocks.sol#89-97):
+	External calls:
+	- slots.resolveFor(address(this)) (contracts/test/SlotsMocks.sol#95-96)
+	State variables written after the call(s):
+	- doubleResolveSucceeded = true (contracts/test/SlotsMocks.sol#95)
+	- doubleResolveSucceeded = false (contracts/test/SlotsMocks.sol#96)
+Reentrancy in FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLotteryV2.sol#391)
+	State variables written after the call(s):
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- roundId ++ (contracts/FlexibleLotteryV2.sol#357)
+	- roundResults[roundId].refunded = true (contracts/FlexibleLotteryV2.sol#397)
+	- roundResults[roundId].hasResult = true (contracts/FlexibleLotteryV2.sol#398)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+		- totalRoundsCompleted ++ (contracts/FlexibleLotteryV2.sol#358)
+	- uniquePlayersCount = 0 (contracts/FlexibleLotteryV2.sol#400)
+Reentrancy in FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLottery.sol#435)
+	State variables written after the call(s):
+	- nextDrawTimestamp = block.timestamp (contracts/FlexibleLottery.sol#441)
+	- roundId ++ (contracts/FlexibleLottery.sol#439)
+	- state = Lotterystate.OPEN (contracts/FlexibleLottery.sol#442)
+	- totalRoundsCompleted ++ (contracts/FlexibleLottery.sol#440)
+Reentrancy in FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLottery.sol#435)
+	- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	State variables written after the call(s):
+	- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#255)
+		- inWaitlist[entry.player] = false (contracts/FlexibleLottery.sol#266)
+Reentrancy in FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLotteryV2.sol#346)
+	State variables written after the call(s):
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- committedHash = bytes32(0) (contracts/FlexibleLotteryV2.sol#363)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- fillBlock = 0 (contracts/FlexibleLotteryV2.sol#361)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- firstTicketAt = 0 (contracts/FlexibleLotteryV2.sol#359)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- hashCommitted = false (contracts/FlexibleLotteryV2.sol#362)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- roundDeadline = 0 (contracts/FlexibleLotteryV2.sol#360)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- roundId ++ (contracts/FlexibleLotteryV2.sol#357)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- state = Lotterystate.OPEN (contracts/FlexibleLotteryV2.sol#364)
+	- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+		- totalRoundsCompleted ++ (contracts/FlexibleLotteryV2.sol#358)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+Detector: reentrancy-events
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLottery.sol#416)
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#422)
+Reentrancy in FlexibleLottery._autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#411-426):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+	- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#424)
+Reentrancy in FlexibleLotteryV2._autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#328-337):
+	External calls:
+	- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLotteryV2.sol#333)
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _openNewRound() (contracts/FlexibleLotteryV2.sol#335)
+Reentrancy in FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLottery.sol#370)
+	Event emitted after the call(s):
+	- PrizeClaimed(winner,prize) (contracts/FlexibleLottery.sol#371)
+Reentrancy in FlexibleLottery._payAllPrizesAndFees() (contracts/FlexibleLottery.sol#362-375):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLottery.sol#370)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLottery.sol#416)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#422)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#374)
+Reentrancy in FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLotteryV2.sol#284)
+	Event emitted after the call(s):
+	- PrizeClaimed(winner,prize) (contracts/FlexibleLotteryV2.sol#285)
+Reentrancy in FlexibleLotteryV2._payAllPrizesAndFees() (contracts/FlexibleLotteryV2.sol#276-289):
+	External calls:
+	- usdt.safeTransfer(winner,prize) (contracts/FlexibleLotteryV2.sol#284)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLotteryV2.sol#333)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#288)
+Reentrancy in FlexibleLottery._processWaitlist() (contracts/FlexibleLottery.sol#230-290):
+	External calls:
+	- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+	- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+Reentrancy in Slots._settleSeries(address) (contracts/Slots.sol#389-424):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,player,totalPayout) (contracts/Slots.sol#421)
+	- SafeERC20.safeTransfer(usdt,player,totalRefunded) (contracts/Slots.sol#422)
+	Event emitted after the call(s):
+	- SeriesSettled(player,bb,n,totalPayout,totalRefunded) (contracts/Slots.sol#423)
+Reentrancy in Slots._settleSingle(address) (contracts/Slots.sol#345-376):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,player,bet) (contracts/Slots.sol#366)
+	Event emitted after the call(s):
+	- SpinResolved(player,bb,bet,bytes32(0),0,(uint8(0),0,0),0) (contracts/Slots.sol#367)
+Reentrancy in Slots._settleSingle(address) (contracts/Slots.sol#345-376):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,player,payout) (contracts/Slots.sol#373)
+	Event emitted after the call(s):
+	- SpinResolved(player,bb,bet,h,seed,syms,payout) (contracts/Slots.sol#375)
+Reentrancy in Slots._startSession(uint256,uint256) (contracts/Slots.sol#288-313):
+	External calls:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),escrow) (contracts/Slots.sol#300)
+	Event emitted after the call(s):
+	- SpinStarted(msg.sender,block.number,bet,n) (contracts/Slots.sol#312)
+Reentrancy in FlexibleLottery.batchForceClaim(address[]) (contracts/FlexibleLottery.sol#388-409):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLottery.sol#404)
+	Event emitted after the call(s):
+	- BatchPrizeForceClaimed(winners,amounts,msg.sender) (contracts/FlexibleLottery.sol#407)
+Reentrancy in FlexibleLottery.batchForceClaim(address[]) (contracts/FlexibleLottery.sol#388-409):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLottery.sol#404)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLottery.sol#416)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#422)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#408)
+Reentrancy in FlexibleLotteryV2.batchForceClaim(address[]) (contracts/FlexibleLotteryV2.sol#304-325):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLotteryV2.sol#320)
+	Event emitted after the call(s):
+	- BatchPrizeForceClaimed(winners,amounts,msg.sender) (contracts/FlexibleLotteryV2.sol#323)
+Reentrancy in FlexibleLotteryV2.batchForceClaim(address[]) (contracts/FlexibleLotteryV2.sol#304-325):
+	External calls:
+	- usdt.safeTransfer(winners[i_scope_0],amounts[i_scope_0]) (contracts/FlexibleLotteryV2.sol#320)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLotteryV2.sol#333)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#324)
+Reentrancy in FlexibleLottery.buyTickets(uint256) (contracts/FlexibleLottery.sol#126-164):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),totalCost) (contracts/FlexibleLottery.sol#145)
+	Event emitted after the call(s):
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#162)
+	- TicketsPurchased(roundId,msg.sender,quantity,totalCost,ticketsPerPlayer[msg.sender]) (contracts/FlexibleLottery.sol#151)
+Reentrancy in FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),totalCost) (contracts/FlexibleLotteryV2.sol#178)
+	Event emitted after the call(s):
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLotteryV2.sol#195)
+	- TicketsPurchased(roundId,msg.sender,quantity,totalCost,ticketsPerPlayer[msg.sender]) (contracts/FlexibleLotteryV2.sol#184)
+Reentrancy in Slots.claimCreatorFees(address[]) (contracts/Slots.sol#438-447):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,who[i],amt) (contracts/Slots.sol#444)
+	Event emitted after the call(s):
+	- CreatorFeesClaimed(who[i],amt,msg.sender) (contracts/Slots.sol#445)
+Reentrancy in Slots.deposit(uint256) (contracts/Slots.sol#248-266):
+	External calls:
+	- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),amount) (contracts/Slots.sol#252)
+	Event emitted after the call(s):
+	- LpDeposited(msg.sender,received,shares) (contracts/Slots.sol#265)
+Reentrancy in FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLottery.sol#483)
+	- usdt.safeTransfer(waitlist[i_scope_0].player,waitlist[i_scope_0].deposit) (contracts/FlexibleLottery.sol#488)
+	Event emitted after the call(s):
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#505)
+Reentrancy in FlexibleLottery.forceClaimPrize(address) (contracts/FlexibleLottery.sol#377-386):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLottery.sol#383)
+	Event emitted after the call(s):
+	- PrizeForceClaimed(winner,amount,msg.sender) (contracts/FlexibleLottery.sol#384)
+Reentrancy in FlexibleLottery.forceClaimPrize(address) (contracts/FlexibleLottery.sol#377-386):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLottery.sol#383)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLottery.sol#415)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLottery.sol#416)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#422)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLottery.sol#385)
+Reentrancy in FlexibleLotteryV2.forceClaimPrize(address) (contracts/FlexibleLotteryV2.sol#293-302):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLotteryV2.sol#299)
+	Event emitted after the call(s):
+	- PrizeForceClaimed(winner,amount,msg.sender) (contracts/FlexibleLotteryV2.sol#300)
+Reentrancy in FlexibleLotteryV2.forceClaimPrize(address) (contracts/FlexibleLotteryV2.sol#293-302):
+	External calls:
+	- usdt.safeTransfer(winner,amount) (contracts/FlexibleLotteryV2.sol#299)
+	- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+		- success = token.transfer(to,amount) (contracts/FlexibleLotteryV2.sol#17)
+		- usdt.safeTransfer(creator,fees) (contracts/FlexibleLotteryV2.sol#332)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(fees) (contracts/FlexibleLotteryV2.sol#333)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _autoWithdrawFeesIfPossible() (contracts/FlexibleLotteryV2.sol#301)
+Reentrancy in FlexibleLottery.joinWaitlist(uint256) (contracts/FlexibleLottery.sol#175-194):
+	External calls:
+	- usdt.safeTransferFrom(msg.sender,address(this),deposit) (contracts/FlexibleLottery.sol#183)
+	Event emitted after the call(s):
+	- WaitlistJoined(msg.sender,quantity,waitlist.length) (contracts/FlexibleLottery.sol#193)
+Reentrancy in FlexibleLottery.leaveWaitlist() (contracts/FlexibleLottery.sol#196-213):
+	External calls:
+	- usdt.safeTransfer(msg.sender,refund) (contracts/FlexibleLottery.sol#211)
+	Event emitted after the call(s):
+	- WaitlistLeft(msg.sender,refund) (contracts/FlexibleLottery.sol#212)
+Reentrancy in FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404):
+	External calls:
+	- usdt.safeTransfer(player,refund) (contracts/FlexibleLotteryV2.sol#391)
+	Event emitted after the call(s):
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _openNewRound() (contracts/FlexibleLotteryV2.sol#403)
+	- RoundRefunded(roundId,refundedPlayers,totalRefunded) (contracts/FlexibleLotteryV2.sol#402)
+Reentrancy in Slots.spin(uint256,bool) (contracts/Slots.sol#322-325):
+	External calls:
+	- _settleSingle(msg.sender) (contracts/Slots.sol#323)
+		- success = token.transfer(to,amount) (contracts/Slots.sol#16)
+		- SafeERC20.safeTransfer(usdt,player,bet) (contracts/Slots.sol#366)
+		- SafeERC20.safeTransfer(usdt,player,payout) (contracts/Slots.sol#373)
+	- _startSession(bet,1) (contracts/Slots.sol#324)
+		- success = token.transferFrom(from,to,amount) (contracts/Slots.sol#12)
+		- SafeERC20.safeTransferFrom(usdt,msg.sender,address(this),escrow) (contracts/Slots.sol#300)
+	Event emitted after the call(s):
+	- SpinStarted(msg.sender,block.number,bet,n) (contracts/Slots.sol#312)
+		- _startSession(bet,1) (contracts/Slots.sol#324)
+Reentrancy in Slots.withdraw(uint256) (contracts/Slots.sol#270-284):
+	External calls:
+	- SafeERC20.safeTransfer(usdt,msg.sender,value) (contracts/Slots.sol#282)
+	Event emitted after the call(s):
+	- LpWithdrawn(msg.sender,shares,value) (contracts/Slots.sol#283)
+Reentrancy in FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLottery.sol#435)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(amount) (contracts/FlexibleLottery.sol#436)
+	- RoundOpened(roundId,nextDrawTimestamp) (contracts/FlexibleLottery.sol#443)
+Reentrancy in FlexibleLottery.withdrawFees() (contracts/FlexibleLottery.sol#428-446):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLottery.sol#435)
+	- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+		- success = token.transfer(to,amount) (contracts/FlexibleLottery.sol#17)
+		- usdt.safeTransfer(entry.player,refund) (contracts/FlexibleLottery.sol#246)
+		- usdt.safeTransfer(entry.player,entry.deposit) (contracts/FlexibleLottery.sol#265)
+	Event emitted after the call(s):
+	- RoundFull(roundId,tickets.length,usdt.balanceOf(address(this))) (contracts/FlexibleLottery.sol#288)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+	- TicketsPurchased(roundId,entry.player,qty,qty * ticketPrice,ticketsPerPlayer[entry.player]) (contracts/FlexibleLottery.sol#259)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+	- WaitlistProcessed(entry.player,qty,roundId) (contracts/FlexibleLottery.sol#258)
+		- _processWaitlist() (contracts/FlexibleLottery.sol#444)
+Reentrancy in FlexibleLotteryV2.withdrawFees() (contracts/FlexibleLotteryV2.sol#339-352):
+	External calls:
+	- usdt.safeTransfer(creator,amount) (contracts/FlexibleLotteryV2.sol#346)
+	Event emitted after the call(s):
+	- CreatorFeeWithdrawn(amount) (contracts/FlexibleLotteryV2.sol#347)
+	- RoundOpened(roundId,0) (contracts/FlexibleLotteryV2.sol#365)
+		- _openNewRound() (contracts/FlexibleLotteryV2.sol#350)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+INFO:Detectors:
+Detector: timestamp
+FlexibleLotteryV2.buyTickets(uint256) (contracts/FlexibleLotteryV2.sol#151-197) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(roundDeadline == 0 || block.timestamp <= roundDeadline,Round window expired) (contracts/FlexibleLotteryV2.sol#164)
+FlexibleLotteryV2.refundAll() (contracts/FlexibleLotteryV2.sol#373-404) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(roundDeadline > 0 && block.timestamp > roundDeadline,Round still collecting) (contracts/FlexibleLotteryV2.sol#375)
+	- require(bool,string)(block.timestamp > roundDeadline + fullGrace,Draw still possible) (contracts/FlexibleLotteryV2.sol#378)
+FlexibleLotteryV2.canRefund() (contracts/FlexibleLotteryV2.sol#450-458) uses timestamp for comparisons
+	Dangerous comparisons:
+	- roundDeadline > 0 && block.timestamp > roundDeadline && tickets.length > 0 (contracts/FlexibleLotteryV2.sol#452)
+	- block.timestamp > roundDeadline + fullGrace (contracts/FlexibleLotteryV2.sol#455)
+Slots.applyParamChange(uint8) (contracts/Slots.sol#473-485) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(pendingEffectiveAt[kind] != 0,nothing scheduled) (contracts/Slots.sol#475)
+	- require(bool,string)(block.timestamp >= pendingEffectiveAt[kind],timelock 24h) (contracts/Slots.sol#476)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: costly-loop
+FlexibleLottery.refundMyTickets() (contracts/FlexibleLottery.sol#448-468) has costly operations inside a loop:
+	- tickets.pop() (contracts/FlexibleLottery.sol#462)
+FlexibleLottery.emergencyRefundAll() (contracts/FlexibleLottery.sol#470-506) has costly operations inside a loop:
+	- delete waitlistIndex[waitlist[i_scope_0].player] (contracts/FlexibleLottery.sol#490)
+Slots.claimCreatorFees(address[]) (contracts/Slots.sol#438-447) has costly operations inside a loop:
+	- creatorFeesTotal -= amt (contracts/Slots.sol#443)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop
+INFO:Detectors:
+Detector: solc-version
+Version constraint ^0.8.19 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- ^0.8.19 (contracts/FlexibleLottery.sol#2)
+	- ^0.8.19 (contracts/FlexibleLotteryV2.sol#2)
+	- ^0.8.19 (contracts/Slots.sol#2)
+	- ^0.8.19 (contracts/SniperBots.sol#2)
+	- ^0.8.19 (contracts/TestUSDT.sol#2)
+	- ^0.8.19 (contracts/test/SlotsMocks.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Detector: low-level-calls
+Low level call in FlexibleLottery._getTokenDecimals(address) (contracts/FlexibleLottery.sol#529-533):
+	- (success,data) = token.staticcall(abi.encodeWithSignature(decimals())) (contracts/FlexibleLottery.sol#530)
+Low level call in FlexibleLotteryV2._getTokenDecimals(address) (contracts/FlexibleLotteryV2.sol#485-489):
+	- (success,data) = token.staticcall(abi.encodeWithSignature(decimals())) (contracts/FlexibleLotteryV2.sol#486)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Detectors:
+Detector: missing-inheritance
+Slots (contracts/Slots.sol#54-491) should inherit from Slots (contracts/test/SlotsMocks.sol#110-113)
+TestUSDT (contracts/TestUSDT.sol#6-38) should inherit from IERC20 (contracts/test/SlotsMocks.sol#114-116)
+MockFeeToken (contracts/test/SlotsMocks.sol#18-42) should inherit from IERC20 (contracts/test/SlotsMocks.sol#114-116)
+ReentrantUSDT (contracts/test/SlotsMocks.sol#44-72) should inherit from IERC20 (contracts/test/SlotsMocks.sol#114-116)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+INFO:Detectors:
+Detector: naming-convention
+Parameter FlexibleLottery.updateParams(uint256,uint256,uint256,uint256)._ticketPrice (contracts/FlexibleLottery.sol#509) is not in mixedCase
+Parameter FlexibleLottery.updateParams(uint256,uint256,uint256,uint256)._maxTicketsTotal (contracts/FlexibleLottery.sol#510) is not in mixedCase
+Parameter FlexibleLottery.updateParams(uint256,uint256,uint256,uint256)._maxTicketsPerPlayer (contracts/FlexibleLottery.sol#511) is not in mixedCase
+Parameter FlexibleLottery.updateParams(uint256,uint256,uint256,uint256)._maxPlayers (contracts/FlexibleLottery.sol#512) is not in mixedCase
+Parameter FlexibleLottery.getRoundResult(uint256)._roundId (contracts/FlexibleLottery.sol#544) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._ticketPrice (contracts/FlexibleLotteryV2.sol#408) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._maxTicketsTotal (contracts/FlexibleLotteryV2.sol#409) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._maxTicketsPerPlayer (contracts/FlexibleLotteryV2.sol#410) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._maxPlayers (contracts/FlexibleLotteryV2.sol#411) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._roundDuration (contracts/FlexibleLotteryV2.sol#412) is not in mixedCase
+Parameter FlexibleLotteryV2.updateParams(uint256,uint256,uint256,uint256,uint256,uint256)._fullGrace (contracts/FlexibleLotteryV2.sol#413) is not in mixedCase
+Parameter FlexibleLotteryV2.getRoundResult(uint256)._roundId (contracts/FlexibleLotteryV2.sol#474) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Detectors:
+Detector: too-many-digits
+Slots._tripleBps(uint8) (contracts/Slots.sol#66-75) uses literals with too many digits:
+	- 1000000 (contracts/Slots.sol#68)
+Slots._tripleBps(uint8) (contracts/Slots.sol#66-75) uses literals with too many digits:
+	- 400000 (contracts/Slots.sol#69)
+Slots._tripleBps(uint8) (contracts/Slots.sol#66-75) uses literals with too many digits:
+	- 200000 (contracts/Slots.sol#70)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+INFO:Detectors:
+Detector: constable-states
+MockFeeToken.decimals (contracts/test/SlotsMocks.sol#20) should be constant 
+MockFeeToken.name (contracts/test/SlotsMocks.sol#19) should be constant 
+ReentrantUSDT.decimals (contracts/test/SlotsMocks.sol#46) should be constant 
+ReentrantUSDT.name (contracts/test/SlotsMocks.sol#45) should be constant 
+TestUSDT.decimals (contracts/TestUSDT.sol#9) should be constant 
+TestUSDT.name (contracts/TestUSDT.sol#7) should be constant 
+TestUSDT.symbol (contracts/TestUSDT.sol#8) should be constant 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+INFO:Slither:. analyzed (23 contracts with 102 detectors), 132 result(s) found
