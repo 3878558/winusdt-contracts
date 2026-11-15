@@ -62,6 +62,7 @@ const POLL_SEC = Number(arg("--poll", process.env.LOTTERY_KEEPER_POLL_SEC || 30)
 const GAS_CAP = ethers.utils.parseUnits(String(arg("--gas-cap", process.env.LOTTERY_KEEPER_GAS_CAP_GWEI || 5)), "gwei");
 const BNB_FLOOR = ethers.utils.parseEther(String(arg("--bnb-floor", process.env.LOTTERY_KEEPER_BNB_FLOOR || 0.005)));
 const HEARTBEAT_SEC = Number(arg("--heartbeat", 600));
+const MAX_MS = Number(arg("--max-minutes", process.env.KEEPER_MAX_MINUTES || 0)) * 60 * 1000; // 0 = forever
 
 (async () => {
   // ── Provider with rotation ──
@@ -82,8 +83,13 @@ const HEARTBEAT_SEC = Number(arg("--heartbeat", 600));
   let lastBeat = 0;
 
   console.log(`${now()} === LOTTERY KEEPER START === tiers ${Object.keys(TIERS).join("/")} | keeper ${keeper.address.slice(0, 10)} | poll ${POLL_SEC}s | gas cap ${ethers.utils.formatUnits(GAS_CAP, "gwei")} gwei | floor ${F(BNB_FLOOR)} BNB`);
+  let t0 = Date.now();
 
   while (true) {
+    if (MAX_MS && Date.now() - t0 > MAX_MS) {
+      console.log(`${now()} \u23F8 KEEPER_MAX_MINUTES reached - planned exit for hosted restart chain`);
+      process.exit(0);
+    }
     try {
       let actions = 0;
       for (const [t, entry] of Object.entries(tiers)) {

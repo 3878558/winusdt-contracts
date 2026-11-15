@@ -42,6 +42,7 @@ jobs:
       - name: Run keepers (slots + lottery daemons)
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          KEEPER_MAX_MINUTES: "58"   # graceful exit before the 62-min job timeout -> green chain
         run: |
           if [ -z "$DEPLOYER_PRIVATE_KEY" ]; then
             echo "skip: DEPLOYER_PRIVATE_KEY secret is not set. Add it in repo Settings -> Secrets and variables -> Actions to activate the hosted keepers."

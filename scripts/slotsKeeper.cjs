@@ -55,6 +55,7 @@ const now = () => new Date().toLocaleTimeString("ru-RU", { hour12: false });
   const slotsAddr = process.argv[2] || MAINNET_DEFAULT;
   const GRACE_SEC = Number(process.argv[3] || process.env.KEEPER_GRACE_SEC || 60);
   const POLL_SEC = Number(process.argv[4] || process.env.KEEPER_POLL_SEC || 15);
+  const MAX_MS = Number(process.env.KEEPER_MAX_MINUTES || 0) * 60 * 1000; // 0 = forever
   const BNB_FLOOR = ethers.utils.parseEther(process.env.KEEPER_BNB_FLOOR || "0.005");
   const GAS_CAP = ethers.utils.parseUnits(process.env.KEEPER_GAS_CAP_GWEI || "5", "gwei");
 
@@ -90,7 +91,9 @@ const now = () => new Date().toLocaleTimeString("ru-RU", { hour12: false });
   };
   await preflight();
 
+  let t0 = Date.now();
   while (true) {
+    if (MAX_MS && Date.now() - t0 > MAX_MS) { console.log(`${now()} ⏸ KEEPER_MAX_MINUTES - плановый выход для рестарта (hosted chain)`); process.exit(0); }
     try {
       const bn = await provider.getBlockNumber();
       const busy = await slots.activePlayer();
