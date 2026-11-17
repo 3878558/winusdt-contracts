@@ -1,6 +1,6 @@
 ﻿// scripts/slotsKeeper.cjs
 //
-// ÐšÐ¸Ð¿ÐµÑ€ Ð¼Ð°ÑˆÐ¸Ð½Ñ‹ Slots v2 (Ñ„Ð°Ð·Ð° 6d): ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð¾Ñ‡Ð½Ñ‹Ð¹ Ð´Ð¾Ð¶Ð¸Ð¼ Ð±Ñ€Ð¾ÑˆÐµÐ½Ð½Ñ‹Ñ… ÑÐµÑÑÐ¸Ð¹.
+// Кипер машины Slots v3 (фаза 6s): дожим брошенных сессий + снятие протухших резерваций.
 //
 // Ð—Ð°Ñ‡ÐµÐ¼: ÑÐµÑÑÐ¸Ñ (escrow + exposure + busy-Ñ„Ð»Ð°Ð³) Ð¶Ð¸Ð²Ñ‘Ñ‚ Ð´Ð¾ settle. Ð˜Ð³Ñ€Ð¾Ðº Ð¼Ð¾Ð¶ÐµÑ‚
 // Ð·Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñƒ/Ð¿Ñ€Ð¾Ð¿Ð°ÑÑ‚ÑŒ â€” Ð¼Ð°ÑˆÐ¸Ð½Ð° Ð¾ÑÑ‚Ð°Ñ‘Ñ‚ÑÑ Ð·Ð°Ð½ÑÑ‚Ð¾Ð¹, LP-Ð¿ÑƒÐ» Ñ‚ÐµÑ€ÑÐµÑ‚
@@ -8,6 +8,12 @@
 // resolveSeriesFor permissionless: Ð»ÑŽÐ±Ð¾Ð¹ Ð°Ð´Ñ€ÐµÑ Ð¼Ð¾Ð¶ÐµÑ‚ Ð´Ð¾Ð¶Ð°Ñ‚ÑŒ Ñ‡ÑƒÐ¶Ð¾Ð¹ Ñ…Ð²Ð¾ÑÑ‚ â€”
 // Ð²Ñ‹Ð¿Ð»Ð°Ñ‚Ð° Ð’Ð¡Ð•Ð“Ð”Ð ÑƒÑ…Ð¾Ð´Ð¸Ñ‚ Ð¸Ð³Ñ€Ð¾ÐºÑƒ (Ð¸ÑÑ…Ð¾Ð´ Ð´ÐµÑ‚ÐµÑ€Ð¼Ð¸Ð½Ð¸Ñ€Ð¾Ð²Ð°Ð½ blockhash), ÐºÐ¸Ð¿ÐµÑ€
 // Ð»Ð¸ÑˆÑŒ Ð¿Ð»Ð°Ñ‚Ð¸Ñ‚ Ð³Ð°Ð· Ð¸ Ð¾ÑÐ²Ð¾Ð±Ð¾Ð¶Ð´Ð°ÐµÑ‚ Ð¼Ð°ÑˆÐ¸Ð½Ñƒ. Ð•ÑÐ»Ð¸ blockhash decayed (>256
+
+// v3: settle НЕ освобождает машину — она уходит в пост-settle резервацию
+// игрока на RESERVE_TTL=90с (сосед не перехватит автомат между спинами).
+// Кипер делает две вещи: (1) дожимает брошенные in-flight сессии как раньше,
+// (2) держатель без активной сессии = резервация: если TTL вышел — снимает
+// её releaseExpired() (газ ~30k), иначе просто ждёт (idle-поллинг бесплатен).
 // Ð±Ð»Ð¾ÐºÐ¾Ð²) â€” ÐºÐ¾Ð½Ñ‚Ñ€Ð°ÐºÑ‚ ÑÐ°Ð¼ Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ ÑÑ‚Ð°Ð²ÐºÐ¸ (ÑÐ¿Ð¸Ð½Ñ‹ Ð½Ðµ Ð·Ð°ÑÑ‚Ñ€ÐµÐ²Ð°ÑŽÑ‚ Ð½Ð¸ÐºÐ¾Ð³Ð´Ð°).
 //
 // Ð¦Ð¸ÐºÐ»: poll activePlayer() ÐºÐ°Ð¶Ð´Ñ‹Ðµ POLL ÑÐµÐº (+jitter) â†’ ÐµÑÐ»Ð¸ Ð·Ð°Ð½ÑÑ‚Ð° Ð¸ Ñ…Ð²Ð¾ÑÑ‚
@@ -36,9 +42,11 @@ const RPCS = [
 
 const SLOTS_ABI = [
   "function activePlayer() view returns (address)",
+  "function reservedUntil() view returns (uint64)",
   "function activeSession(address) view returns (uint256 bet, uint256 betBlock, uint256 n, bool active)",
   "function resolveFor(address player)",
   "function resolveSeriesFor(address player)",
+  "function releaseExpired()",
   "function equity() view returns (uint256)",
   "function freeBankroll() view returns (uint256)",
   "function totalEscrow() view returns (uint256)",
@@ -75,18 +83,19 @@ const now = () => new Date().toLocaleTimeString("ru-RU", { hour12: false });
     console.log(`${now()} âš  RPC â†’ ${RPCS[rpcIdx]}`);
   };
 
-  let resolves = 0, paidOut = ethers.constants.Zero, refunded = ethers.constants.Zero,
+  let resolves = 0, released = 0, paidOut = ethers.constants.Zero, refunded = ethers.constants.Zero,
       gasSpent = ethers.constants.Zero, errors = 0, idleChecks = 0;
 
   const preflight = async () => {
     const bn = await provider.getBlockNumber();
-    const [eq, fb, esc, busy, kbn] = await Promise.all([
+    const [eq, fb, esc, busy, kbn, ru] = await Promise.all([
       slots.equity(), slots.freeBankroll(), slots.totalEscrow(),
       slots.activePlayer(), provider.getBalance(keeper.address),
+      slots.reservedUntil(),
     ]);
-    console.log(`${now()} â•â• ÐšÐ˜ÐŸÐ•Ð  Ð¡Ð¢ÐÐ Ð¢ â•â• ${slotsAddr}`);
-    console.log(`${now()} Ð±Ð»Ð¾Ðº ${bn} | RPC ${RPCS[rpcIdx]} | grace ${GRACE_SEC}s | poll ${POLL_SEC}s | Ð³Ð°Ð·-ÐºÐ°Ð¿ ${ethers.utils.formatUnits(GAS_CAP, "gwei")} gwei | floor ${F(BNB_FLOOR)} BNB`);
-    console.log(`${now()} Ð¼Ð°ÑˆÐ¸Ð½Ð°: equity ${F(eq)} | fb ${F(fb)} | escrow ${F(esc)} | busy ${busy === ethers.constants.AddressZero ? "ÑÐ²Ð¾Ð±Ð¾Ð´Ð½Ð°" : busy.slice(0, 10)}`);
+    console.log(`${now()} ═══ КИПЕР СТАРТ ═══ ${slotsAddr}`);
+    console.log(`${now()} блок ${bn} | RPC ${RPCS[rpcIdx]} | grace ${GRACE_SEC}s | poll ${POLL_SEC}s | газ-кап ${ethers.utils.formatUnits(GAS_CAP, "gwei")} gwei | floor ${F(BNB_FLOOR)} BNB`);
+    console.log(`${now()} машина: equity ${F(eq)} | fb ${F(fb)} | escrow ${F(esc)} | busy ${busy === ethers.constants.AddressZero ? "свободна" : busy.slice(0, 10)}${Number(ru) > 0 ? ` | резервация до ${new Date(Number(ru) * 1000).toLocaleTimeString("ru-RU", { hour12: false })}` : ""}`);
     console.log(`${now()} ÐºÐ¸Ð¿ÐµÑ€ ${keeper.address}: BNB ${F(kbn)} | resolveFor(solo)/resolveSeriesFor(ÑÐµÑ€Ð¸Ñ) permissionless`);
   };
   await preflight();
@@ -106,7 +115,39 @@ const now = () => new Date().toLocaleTimeString("ru-RU", { hour12: false });
       }
 
       let [bet, bb, n, act] = await slots.activeSession(busy);
-      if (!act) { await sleep(2000); continue; } // Ñ‚Ð¾Ð»ÑŒÐºÐ¾ Ñ‡Ñ‚Ð¾ Ð¾ÑÐ²Ð¾Ð±Ð¾Ð´Ð¸Ð»Ð°ÑÑŒ
+      if (!act) {
+        // v3: держатель без сессии = пост-settle резервация игрока. Пока TTL
+        // живёт — просто ждём (idle-поллинг бесплатен); после истечения —
+        // permissionless releaseExpired (машина снова свободна для всех).
+        const ru = Number(await slots.reservedUntil());
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (ru !== 0 && nowSec < ru) {
+          idleChecks += 1;
+          if (idleChecks % 4 === 1) console.log(`${now()} …резервация ${busy.slice(0, 10)} живёт ещё ${ru - nowSec}с — ждём`);
+          await sleep(POLL_SEC * 1000);
+          continue;
+        }
+        const gp = await provider.getGasPrice();
+        if (gp.gt(GAS_CAP)) {
+          console.log(`${now()} ⚠ газ ${ethers.utils.formatUnits(gp, "gwei")} > капа — release отложен`);
+          await sleep(30000);
+          continue;
+        }
+        const kbn = await provider.getBalance(keeper.address);
+        if (kbn.lt(BNB_FLOOR.add(gp.mul(120000)))) {
+          console.log(`${now()} ⛔ BNB кипера ${F(kbn)} ниже floor — release отложен, нужна дозаливка`);
+          await sleep(60000);
+          continue;
+        }
+        const tx = await slots.connect(keeper).releaseExpired({ gasPrice: gp, gasLimit: 120000 });
+        console.log(`${now()} 🔓 резервация ${busy.slice(0, 10)} протухла (TTL вышел ${ru ? new Date(ru * 1000).toLocaleTimeString("ru-RU", { hour12: false }) : "?"}) — releaseExpired tx ${tx.hash}`);
+        const rec = await tx.wait();
+        gasSpent = gasSpent.add(rec.gasUsed.mul(rec.effectiveGasPrice || gp));
+        released += 1;
+        console.log(`${now()} 📊 релизов ${released} | газ ${F(gasSpent)} BNB`);
+        await sleep(POLL_SEC * 1000);
+        continue;
+      }
       bb = Number(bb); n = Number(n);
       const hashReady = bn > bb + 2; // blockhash(bb+1) ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚ ÑÑ‚Ñ€Ð¾Ð³Ð¾ Ð¿Ð¾Ð·Ð°Ð´Ð¸
       const tBet = (await provider.getBlock(bb)).timestamp;
@@ -165,8 +206,16 @@ const now = () => new Date().toLocaleTimeString("ru-RU", { hour12: false });
       resolves += 1;
       console.log(line);
       console.log(`${now()} ðŸ“Š Ð´Ð¾Ð¶Ð¸Ð¼Ð¾Ð² ${resolves} | Ð²Ñ‹Ð¿Ð»Ð°Ñ‡ÐµÐ½Ð¾ ${F(paidOut)} | refund ${F(refunded)} | Ð³Ð°Ð· ${F(gasSpent)} BNB`);
-      const [escAfter, busyAfter] = await Promise.all([slots.totalEscrow(), slots.activePlayer()]);
-      console.log(`${now()} Ð¼Ð°ÑˆÐ¸Ð½Ð°: escrow ${F(escAfter)} | busy ${busyAfter === ethers.constants.AddressZero ? "ÑÐ²Ð¾Ð±Ð¾Ð´Ð½Ð° âœ“" : busyAfter}`);
+      const escAfter = await slots.totalEscrow();
+      const [mh, mbusy, muntil] = await slots.machineStatus();
+      const busyStr = mh === ethers.constants.AddressZero
+        ? "свободна ✓"
+        : mbusy
+          ? (Number(muntil) > 0
+            ? `резервация ${mh.slice(0, 10)} (до ${new Date(Number(muntil) * 1000).toLocaleTimeString("ru-RU", { hour12: false })})`
+            : `in-flight ${mh.slice(0, 10)}`)
+          : `протухла ${mh.slice(0, 10)} (снимем releaseExpired)`;
+      console.log(`${now()} машина: escrow ${F(escAfter)} | busy ${busyStr}`);
       await sleep(POLL_SEC * 1000);
     } catch (e) {
       errors += 1;

@@ -8,6 +8,8 @@
 //
 //   slots pass:   stuck session (grace 60s + blockhash ready) -> resolveFor /
 //                 resolveSeriesFor; payout always goes to the player.
+//                 v3 (6s): expired post-settle reservation -> releaseExpired
+//                 (branch only fires on v3 contracts - v2-safe until deploy).
 //   lottery pass: canRefund -> refundAll, canCommit -> commitHash,
 //                 canDraw -> triggerDraw; winner gets the prize on-chain.
 //
@@ -32,7 +34,9 @@ const TIERS = {
 
 const SLOTS_ABI = [
   "function activePlayer() view returns (address)",
+  "function reservedUntil() view returns (uint64)",
   "function activeSession(address) view returns (uint256 bet, uint256 betBlock, uint256 n, bool active)",
+  "function releaseExpired()",
   "function resolveFor(address player)",
   "function resolveSeriesFor(address player)",
   "event SpinResolved(address indexed player, uint256 indexed betBlock, uint256 bet, bytes32 h, uint256 seed, uint8[3] syms, uint256 payout)",
@@ -103,25 +107,39 @@ async function sendTx(label, fn, gasPrice) {
       console.log(`${now()} slots: idle`);
     } else {
       const [bet, bb, n, act] = await slots.activeSession(busy);
-      const bn = await provider.getBlockNumber();
-      const bh = bn > bb ? await provider.getBlock(bb + 1) : null;
-      const elapsed = Math.floor(Date.now() / 1000) - N(bb);
-      if (act && bh && bn - (bb + 1) < 250 && elapsed >= GRACE_SEC) {
-        const [, bb2, n2, act2] = await slots.activeSession(busy);
-        if (!act2 || N(bb2) !== N(bb) || N(n2) !== N(n)) {
-          console.log(`${now()} slots: session changed (player alive) - waiting`);
+      if (!act) {
+        // v3 (6s): holder without a session = post-settle reservation. TTL
+        // live -> wait (view calls are free); expired -> permissionless
+        // releaseExpired. v2 contracts never reach this branch (settle frees
+        // activePlayer), so the script stays v2-safe until the v3 deploy.
+        const ru = N(await slots.reservedUntil());
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (ru !== 0 && nowSec < ru) {
+          console.log(`${now()} slots: reserved by ${busy.slice(0, 10)} for ${ru - nowSec}s - waiting`);
         } else {
-          const fn = N(n) === 1 ? "resolveFor" : "resolveSeriesFor";
-          const rec = await sendTx(`slots ${fn} player ${busy.slice(0, 10)} bet ${F(bet)} x${n} tail ${elapsed}s`, slots.connect(wallet)[fn].bind(slots.connect(wallet), busy), gasPrice);
-          for (const ev of rec.events || []) {
-            try {
-              if (ev.event === "SpinResolved") console.log(`${now()}   spin [${ev.args.syms.join(",")}] payout ${F(ev.args.payout)} ${ev.args.h === ethers.constants.HashZero ? "(decay refund)" : ""}`);
-              if (ev.event === "SeriesSettled") console.log(`${now()}   series x${N(ev.args.n)}: payout ${F(ev.args.totalPayout)} refund ${F(ev.args.totalRefunded)}`);
-            } catch { /* foreign event */ }
-          }
+          await sendTx(`slots releaseExpired (stale reservation ${busy.slice(0, 10)})`, slots.connect(wallet).releaseExpired.bind(slots.connect(wallet)), gasPrice);
         }
       } else {
-        console.log(`${now()} slots: busy ${busy.slice(0, 10)} tail ${elapsed}s, hash ${bh ? "ready" : "pending"} - not due yet`);
+        const bn = await provider.getBlockNumber();
+        const bh = bn > bb ? await provider.getBlock(bb + 1) : null;
+        const elapsed = Math.floor(Date.now() / 1000) - N(bb);
+        if (bh && bn - (bb + 1) < 250 && elapsed >= GRACE_SEC) {
+          const [, bb2, n2, act2] = await slots.activeSession(busy);
+          if (!act2 || N(bb2) !== N(bb) || N(n2) !== N(n)) {
+            console.log(`${now()} slots: session changed (player alive) - waiting`);
+          } else {
+            const fn = N(n) === 1 ? "resolveFor" : "resolveSeriesFor";
+            const rec = await sendTx(`slots ${fn} player ${busy.slice(0, 10)} bet ${F(bet)} x${n} tail ${elapsed}s`, slots.connect(wallet)[fn].bind(slots.connect(wallet), busy), gasPrice);
+            for (const ev of rec.events || []) {
+              try {
+                if (ev.event === "SpinResolved") console.log(`${now()}   spin [${ev.args.syms.join(",")}] payout ${F(ev.args.payout)} ${ev.args.h === ethers.constants.HashZero ? "(decay refund)" : ""}`);
+                if (ev.event === "SeriesSettled") console.log(`${now()}   series x${N(ev.args.n)}: payout ${F(ev.args.totalPayout)} refund ${F(ev.args.totalRefunded)}`);
+              } catch { /* foreign event */ }
+            }
+          }
+        } else {
+          console.log(`${now()} slots: busy ${busy.slice(0, 10)} tail ${elapsed}s, hash ${bh ? "ready" : "pending"} - not due yet`);
+        }
       }
     }
   } catch (e) { console.log(`${now()} slots pass error: ${String(e && (e.reason || e.message) || e).slice(0, 140)}`); }

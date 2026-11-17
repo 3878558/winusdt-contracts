@@ -84,14 +84,28 @@ contract Slots {
         return 16000;              // 🍒 ×1.6
     }
 
-    // ═══ Эксклюзивный автомат (v2 — оффлайн-опыт «один игрок = одна машина») ═══
-    // Пока activePlayer != address(0) новые ставки ДРУГИХ отклоняются
-    // ("machine busy") — остальные смотрят трансляцию со стороны. Освобождение
-    // — ЛЮБЫМ settle (resolve игрока/кернера/наблюдателя — permissionless,
-    // §3.2) либо decay-refund через ~256 блоков: автомат не может застрять
-    // навсегда, худшая пауза ≈ 13 минут. Chained-play spin(bet, resolvePrev)
-    // держит машину за собой непрерывно (settle прошлой → сразу новая сессия).
+    // ═══ Эксклюзивный автомат + резервация (v3) ═══
+    // Оффлайн-опыт v2 («один игрок = одна машина») расширен резервацией:
+    // settle НЕ обнуляет activePlayer, а переводит машину в пост-settle
+    // резервацию того же игрока на RESERVE_TTL секунд — сосед не перехватит
+    // автомат между спинами (главная жалоба v2).
+    //   • activePlayer == 0 — машина свободна;
+    //   • sessions[activePlayer].active — in-flight сессия (escrow в игре):
+    //     освобождается ТОЛЬКО settle'ом (resolve/resolveFor — permissionless,
+    //     §3.2) либо decay-refund через ~256 блоков;
+    //   • reservedUntil > now — живая резервация: чужие спины revert
+    //     "machine busy", свои разрешены (re-spin без ограничений);
+    //   • reservedUntil ≤ now — протухла: снимает permissionless
+    //     releaseExpired() (кипер, ~1 poll) либо лениво первым желающим
+    //     крутить (газ копеечный) — DoS-блокировки нет, занятость ≤ TTL.
+    // Chained-play spin(bet, resolvePrev) атомарен: settle прошлой → сразу
+    // новая сессия в одном tx; при новом спине резервация гасится (TTL=0).
     address public activePlayer;
+    uint64 public reservedUntil; // v3: дедлайн резервации (0 у in-flight/свободной)
+
+    /// TTL пост-settle резервации, сек (~200 блоков BSC). Immutable — владелец
+    /// не подстраивает (provably fair).
+    uint256 public constant RESERVE_TTL = 90;
 
     // ═══ Экономика/лимиты (§3.4 четыре слоя) ═══
     uint256 public constant EXPOSURE_FACTOR = 99;  // admission: худший джекпот ×100 минус escrow игрока
@@ -145,6 +159,9 @@ contract Slots {
         uint256 payout       // выплата игроку (0 при refund — escrow вернулся)
     );
     event SeriesSettled(address indexed player, uint256 indexed betBlock, uint256 n, uint256 totalPayout, uint256 totalRefunded);
+    // v3: settle оставляет машину за игроком (резервация с TTL); release снимает протухшую
+    event MachineReserved(address indexed player, uint64 until);
+    event MachineReleased(address indexed prevHolder);
     event LpDeposited(address indexed lp, uint256 amount, uint256 shares);
     event LpWithdrawn(address indexed lp, uint256 shares, uint256 value);
     event ParamScheduled(uint8 indexed kind, uint256 oldValue, uint256 newValue, uint64 effectiveAt);
@@ -288,7 +305,20 @@ contract Slots {
     function _startSession(uint256 bet, uint256 n) internal {
         require(!paused, "paused");
         require(!sessions[msg.sender].active, "session active");
-        require(activePlayer == address(0), "machine busy"); // v2: один игрок = один автомат
+        // v3: занято = in-flight сессия ИЛИ живая резервация ДРУГОГО игрока.
+        // Своя машина (сессия или резервация) — всегда можно. Протухшую чужую
+        // резервацию снимаем лениво здесь (газ платит входящий игрок); ветка
+        // reservedUntil == 0 при неактивной сессии недостижима, но оставлена
+        // как аварийный клапан — машина не может застрять навсегда.
+        if (activePlayer != address(0) && activePlayer != msg.sender) {
+            if (!sessions[activePlayer].active && (reservedUntil == 0 || block.timestamp >= reservedUntil)) {
+                emit MachineReleased(activePlayer);
+                activePlayer = address(0);
+                reservedUntil = 0;
+            } else {
+                revert("machine busy");
+            }
+        }
         require(n >= 1 && n <= MAX_SERIES, "series 1..64");
         require(bet >= minBet && bet <= maxBetNow(), "bet out of range");
         // Admission (слой 2): ХУДШИЙ исход всех активных + нового обязан
@@ -308,7 +338,8 @@ contract Slots {
             n: uint16(n),
             active: true
         });
-        activePlayer = msg.sender; // v2: автомат занят до settle
+        activePlayer = msg.sender; // v3: in-flight сессия — TTL не тикает
+        reservedUntil = 0;
         emit SpinStarted(msg.sender, block.number, bet, n);
     }
 
@@ -356,7 +387,13 @@ contract Slots {
         totalEscrow -= bet;
         totalExposure -= EXPOSURE_FACTOR * bet;
         delete sessions[player];
-        if (activePlayer == player) activePlayer = address(0); // v2: машина свободна
+        if (activePlayer == player) {
+            // v3: машина остаётся за игроком — пост-settle резервация с TTL.
+            // Сосед не перехватит автомат между спинами; после TTL машину
+            // освобождают releaseExpired() (кипер) или lazy-захват.
+            reservedUntil = uint64(block.timestamp) + uint64(RESERVE_TTL);
+            emit MachineReserved(player, reservedUntil);
+        }
         totalSpins += 1;
 
         bytes32 h = blockhash(bb + 1);
@@ -399,7 +436,11 @@ contract Slots {
         totalEscrow -= bet * n;
         totalExposure -= EXPOSURE_FACTOR * bet * n;
         delete sessions[player];
-        if (activePlayer == player) activePlayer = address(0); // v2: машина свободна
+        if (activePlayer == player) {
+            // v3: как в _settleSingle — резервация с TTL после серии
+            reservedUntil = uint64(block.timestamp) + uint64(RESERVE_TTL);
+            emit MachineReserved(player, reservedUntil);
+        }
         totalSpins += n;
 
         uint256 totalPayout;
@@ -421,6 +462,38 @@ contract Slots {
         if (totalPayout > 0) SafeERC20.safeTransfer(usdt, player, totalPayout);
         if (totalRefunded > 0) SafeERC20.safeTransfer(usdt, player, totalRefunded);
         emit SeriesSettled(player, bb, n, totalPayout, totalRefunded);
+    }
+
+    // ═══ Резервирование машины (v3, §3.9) ═══
+
+    /// Permissionless-снятие ПРОТУХШЕЙ резервации (TTL вышел, сессий нет).
+    /// In-flight сессию снять нельзя — её дожимают resolveFor/resolveSeriesFor
+    /// (выплата всегда игроку). Кипер вызывает раз в poll после истечения TTL.
+    function releaseExpired() external {
+        require(activePlayer != address(0), "machine free");
+        require(!sessions[activePlayer].active, "session active");
+        // reservedUntil == 0 при неактивной сессии недостижим; ветка —
+        // аварийный клапан против вечного зависания машины.
+        require(reservedUntil == 0 || block.timestamp >= reservedUntil, "not expired");
+        address prev = activePlayer;
+        activePlayer = address(0);
+        reservedUntil = 0;
+        emit MachineReleased(prev);
+    }
+
+    /// Состояние машины одним вызовом (UI/кипер): holder — кто держит
+    /// (0 = свободна), busy — крутить нельзя, until — дедлайн резервации
+    /// (0 у in-flight/свободной). У протухшей busy=false — входящий спин
+    /// снимет её лениво (газ платит входящий, releaseExpired не обязателен).
+    function machineStatus()
+        external view returns (address holder, bool busy, uint64 until)
+    {
+        holder = activePlayer;
+        if (holder == address(0)) return (address(0), false, 0);
+        if (sessions[holder].active) return (holder, true, 0);
+        uint64 ru = reservedUntil;
+        if (ru == 0 || block.timestamp >= ru) return (holder, false, 0);
+        return (holder, true, ru);
     }
 
     /// feeShare делит ТОЛЬКО реализованный edge (нетто раунда, §4):
