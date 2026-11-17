@@ -32,7 +32,7 @@
 require("dotenv").config();
 const { ethers } = require("ethers");
 
-const MAINNET_DEFAULT = "0xC99caA15e1C3CDdBb458acdbBED584279766bCdb";
+const MAINNET_DEFAULT = "0x83549454f838243bDB5C359EA85E6Fc6A68b10A9"; // v3 (6s), деплой 2026-11-17
 const RPCS = [
   process.env.BSC_MAINNET_RPC,
   "https://bsc-dataseed.binance.org",

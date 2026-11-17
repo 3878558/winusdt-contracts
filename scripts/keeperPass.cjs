@@ -25,7 +25,7 @@ const RPCS = [
   "https://bsc.publicnode.com",
 ].filter(Boolean);
 
-const SLOTS = "0xC99caA15e1C3CDdBb458acdbBED584279766bCdb";
+const SLOTS = "0x83549454f838243bDB5C359EA85E6Fc6A68b10A9"; // v3 (6s): reservation-aware
 const TIERS = {
   5: "0xab3DB18131b21a1758EF5fb16fc157e7604E2a71",
   10: "0x165D7A1bAFAb74aa1fB595ab09633475264BE46D",
